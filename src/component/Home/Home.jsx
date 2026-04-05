@@ -89,11 +89,11 @@ export default function Home() {
   }
   if (isError) {
     return <div>
-      {error}    </div>
+      {error.message}    </div>
   }
   return (<>
 
-    <div className="w-[40%] m-auto my-5 flex gap-5">
+    <div className=" m-auto my-5 flex gap-5 w-full max-w-md mx-auto md:w-[40%] md:max-w-none">
       <div>      <Avatar isBordered color="primary" src="https://i.pravatar.cc/150?u=a04258a2462d826712d" />
       </div>
       <div className='bg-slate-300 item-center w-full block p-1 rounded-2xl'>

@@ -32,42 +32,62 @@ export default function AllPosts({ post, ispostdetailes = false }) {
     // console.log(data?.data.data.comments);
 
     return (
-        <Card className="w-[40%] m-auto">
-            <CardHeader className="flex gap-3">
+        <Card className="w-full max-w-md mx-auto md:w-[40%] md:max-w-none">
+            <CardHeader className="flex gap-3 p-4">
                 <img
-                    alt="heroui logo"
+                    alt="user avatar"
                     height={40}
+                    width={40}
                     radius="sm"
                     src={photo}
-                    width={40}
+                    className="flex-shrink-0"
                     onError={(e) => {
-                        e.target.src = virsualImage
+                        e.target.src = virsualImage;
                     }}
                 />
                 <div className="flex flex-col">
-                    <p className="text-md">{name}</p>
-                    <p className="text-small text-default-500">{createdAt}</p>
+                    <p className="text-base font-medium">{name}</p>
+                    <p className="text-sm text-default-500">{createdAt}</p>
                 </div>
             </CardHeader>
+
             <Divider />
-            <CardBody>
-                {body && <p>{body}</p>}
-                {image && <img src={image} alt={body || "test test"} />}
+
+            <CardBody className="p-4 space-y-3">
+                {body && <p className="text-[15px] leading-relaxed">{body}</p>}
+                {image && (
+                    <img
+                        src={image}
+                        alt={body || "post image"}
+                        className="w-full rounded-xl max-h-[380px] object-cover"
+                    />
+                )}
             </CardBody>
+
             <Divider />
-            <CardFooter>
-                <div className="flex justify-around  w-full ">
-                    <div className="cursor-pointer">Like</div>
-                    <div className="cursor-pointer" ><Link to={`/postdetailes/${id}`} > Comments</Link></div>
-                    <div className="cursor-pointer">Share</div>
+
+            <CardFooter className="p-4">
+                <div className="flex justify-around w-full text-sm font-medium">
+                    <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
+                        👍 Like
+                    </div>
+                    <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
+                        <Link to={`/postdetailes/${id}`}>💬 Comments</Link>
+                    </div>
+                    <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
+                        🔗 Share
+                    </div>
                 </div>
             </CardFooter>
+
             <CreatComment post={post} />
+
             {!ispostdetailes && topComment && <ShowComments comment={topComment} />}
 
-            {ispostdetailes && data?.data.data.comments.map((currentcomment) =>
-                <ShowComments comment={currentcomment} />
-            )}
+            {ispostdetailes &&
+                data?.data?.data?.comments?.map((currentcomment) => (
+                    <ShowComments key={currentcomment.id} comment={currentcomment} />
+                ))}
         </Card>
     );
 }
