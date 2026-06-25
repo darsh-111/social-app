@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,30 +11,30 @@ const schema =
   z.object({
     name: z
       .string()
-      .nonempty("الاسم مطلوب")
-      .min(2, { message: "الاسم لازم يكون على الأقل حرفين" })
-      .max(50, { message: "الاسم طويل جدًا" })
+      .nonempty("Name is required")
+      .min(2, { message: "Name must be at least 2 characters" })
+      .max(50, { message: "Name is too long" })
       .trim(),
 
     email: z
       .string()
-      .email({ message: "الإيميل غير صحيح" })
-      .min(1, { message: "الإيميل مطلوب" }),
+      .email({ message: "Invalid email" })
+      .min(1, { message: "Email is required" }),
     password: z
       .string()
-      .min(6, { message: "كلمة المرور لازم تكون 6 حروف على الأقل" })
+      .min(6, { message: "Password must be at least 6 characters" })
       .regex(
         /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&]).+$/,
         {
           message:
-            "لازم تحتوي على حرف كبير أو صغير + رقم + رمز خاص",
+            "Must contain a letter, a number, and a special character",
         }
       ),
     rePassword: z.string(),
 
     dateOfBirth: z
       .string()
-      .min(1, { message: "تاريخ الميلاد مطلوب" })
+      .min(1, { message: "Date of birth is required" })
       .refine(
         (val) => {
           const date = new Date(val);
@@ -42,18 +42,17 @@ const schema =
           const age = today.getFullYear() - date.getFullYear();
           return age >= 8 && age <= 100;
         },
-        { message: "لازم تكون عمرك 8 سنة على الأقل" }
+        { message: "You must be at least 8 years old" }
       ),
 
     gender: z.enum(["male", "female"], {
-      required_error: "الجنس مطلوب",
-      invalid_type_error: "اختر جنس صحيح",
+      required_error: "Gender is required",
+      invalid_type_error: "Please select a valid gender",
     }),
   })
-    // التحقق الإضافي: تأكد إن rePassword = password
     .refine((data) => data.password === data.rePassword, {
-      message: "كلمتا المرور غير متطابقتين",
-      path: ["rePassword"], // الخطأ هيظهر تحت حقل rePassword
+      message: "Passwords do not match",
+      path: ["rePassword"],
     });
 export default function Register() {
   const [Apierror, setApierror] = useState(null)
@@ -94,7 +93,7 @@ export default function Register() {
     }
   }
 
-  const { register, handleSubmit } = form;
+  const { register, handleSubmit, formState: { errors } } = form;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -124,13 +123,7 @@ export default function Register() {
             >
               Enter your Name
             </label>
-            {/*formState.errors.name && formState.touchedFields.name && (
-              <p>
-                {formState.errors.name?.messege}
-              </p>
-            )
-            
-            */}
+            {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name.message}</p>}
           </div>
 
           {/* الإيميل */}
@@ -149,6 +142,7 @@ export default function Register() {
             >
               Enter your Email
             </label>
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           {/* كلمة المرور */}
@@ -166,6 +160,7 @@ export default function Register() {
             >
               Enter your Password
             </label>
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
           </div>
 
           {/* تأكيد كلمة المرور */}
@@ -183,6 +178,7 @@ export default function Register() {
             >
               Confirm your Password
             </label>
+            {errors.rePassword && <p className="text-red-500 text-sm mt-1">{errors.rePassword.message}</p>}
           </div>
 
           {/* تاريخ الميلاد */}
@@ -199,6 +195,7 @@ export default function Register() {
             >
               Date of Birth
             </label>
+            {errors.dateOfBirth && <p className="text-red-500 text-sm mt-1">{errors.dateOfBirth.message}</p>}
           </div>
 
           {/* الجنس */}
@@ -209,7 +206,7 @@ export default function Register() {
                 type="radio"
                 value="male"
                 {...register("gender")}
-                className="w-4 h-4 text-amber-800 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                className="w-4 h-4 text-amber-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
               />
               <label
                 htmlFor="male"
@@ -235,12 +232,13 @@ export default function Register() {
               </label>
             </div>
           </div>
+            {errors.gender && <p className="text-red-500 text-sm mt-1">{errors.gender.message}</p>}
 
           {/* زر الإرسال */}
           <button
             disabled={Isloading}
             type="submit"
-            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none disabled:bg-slate-800 disabled:cursor-not-allowed focus:ring-blue-300 font-medium rounded-3xl  text-sm w-full px-5 py-2.5 text-center transition duration-200"
+            className="text-white bg-[#6f4ef2] hover:bg-[#5a3de0] focus:ring-4 focus:outline-none disabled:bg-slate-800 disabled:cursor-not-allowed focus:ring-[#6f4ef2]/30 font-medium rounded-3xl text-sm w-full px-5 py-2.5 text-center transition duration-200"
           >
             {Isloading ? <Spinner variant="spinner" /> : "register"}
           </button>

@@ -1,15 +1,96 @@
-import { Card, CardHeader, CardBody, CardFooter, Divider, Image } from "@heroui/react";
+import { useState } from 'react'
+import { Card, CardHeader, CardBody, CardFooter, Divider } from "@heroui/react";
 import ShowComments from "../ShowComments/ShowComments";
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import CreatComment from './../Home/CreatComment/CreatComment';
+import PostMenu from './PostMenu';
+import LikersList from '../LikersList/LikersList';
+import ShareButton from '../ShareButton/ShareButton';
+import BookmarkButton from '../BookmarkButton/BookmarkButton';
+import FollowButton from '../Suggestions/FollowButton';
+import { AiOutlineLike, AiFillLike } from "react-icons/ai";
+import { FaRegComment } from "react-icons/fa";
+import { FALLBACK_IMAGE } from '../../utils/constants'
 
-export default function AllPosts({ post, ispostdetailes = false }) {
-    const { id, image, createdAt, user, body, topComment } = post;
+export default function AllPosts({ post, isPostDetails = false, fullWidth = false }) {
+  const [lightbox, setLightbox] = useState(null)
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const [isLiked, setIsLiked] = useState(() => {
+    const saved = JSON.parse(localStorage.getItem("likedPosts") || "{}")
+    return saved[post.id] || false
+  })
+
+  const { data: myProfile } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => axios.get("https://route-posts.routemisr.com/users/profile-data", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("usertoken")}` }
+    }),
+  })
+  const myId = myProfile?.data?.data?.user?.id || myProfile?.data?.data?.user?._id
+  const following = myProfile?.data?.data?.user?.following || []
+    const { id, image, createdAt, user, body, topComment, commentsCount, isShare, sharedPost } = post;
     const { name, photo } = user;
-    const virsualImage = "https://petapixel.com/assets/uploads/2024/01/The-Star-of-System-Sol-Rectangle-640x800.jpg"
-    if (!body && !image) return
+    const userId = user?.id || user?._id;
+
+    const goToUserProfile = (targetUserId) => {
+      if (targetUserId === myId) navigate("/profile")
+      else navigate(`/profile/${targetUserId}`)
+    }
+
+    const likeMutation = useMutation({
+      mutationFn: () => axios.put(`https://route-posts.routemisr.com/posts/${id}/like`, null, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("usertoken")}` }
+      }),
+      onMutate: () => {
+        const newLiked = !isLiked
+        const newCount = Math.max(0, post.likesCount + (newLiked ? 1 : -1))
+        queryClient.setQueryData(["getPosts"], (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            data: {
+              ...old.data,
+              data: {
+                ...old.data?.data,
+                posts: old.data?.data?.posts?.map((p) => p.id === id ? { ...p, isLiked: newLiked, likesCount: newCount } : p)
+              }
+            }
+          }
+        })
+        queryClient.setQueryData(["myPosts"], (old) => {
+          if (!old) return old
+          return {
+            ...old,
+            data: {
+              ...old.data,
+              data: {
+                ...old.data?.data,
+                posts: old.data?.data?.posts?.map((p) => p.id === id ? { ...p, isLiked: newLiked, likesCount: newCount } : p)
+              }
+            }
+          }
+        })
+      },
+      onError: () => {
+        queryClient.invalidateQueries({ queryKey: ["getPosts"] })
+        queryClient.invalidateQueries({ queryKey: ["myPosts"] })
+      }
+    })
+
+    function toggleLike() {
+      const newVal = !isLiked
+      setIsLiked(newVal)
+      const saved = JSON.parse(localStorage.getItem("likedPosts") || "{}")
+      saved[post.id] = newVal
+      localStorage.setItem("likedPosts", JSON.stringify(saved))
+      likeMutation.mutate()
+    }
+
+    if (!body && !image && !isShare) return
 
 
 
@@ -24,30 +105,37 @@ export default function AllPosts({ post, ispostdetailes = false }) {
         )
     }
 
-    const { isError, isLoading, data, error } = useQuery({
+    const { data } = useQuery({
         queryKey: ["postcomment", id],
         queryFn: GetPostsComment,
-        enabled: ispostdetailes
+        enabled: isPostDetails
     })
-    // console.log(data?.data.data.comments);
 
     return (
-        <Card className="w-full max-w-md mx-auto md:w-[40%] md:max-w-none">
-            <CardHeader className="flex gap-3 p-4">
+        <>
+        <Card className={fullWidth ? "w-full" : "w-full"}>
+            <CardHeader className="flex gap-3 p-4 justify-between">
+                <div className="flex gap-3 items-center">
                 <img
                     alt="user avatar"
                     height={40}
                     width={40}
                     radius="sm"
                     src={photo}
-                    className="flex-shrink-0"
+                    className="shrink-0 cursor-pointer"
+                    onClick={() => goToUserProfile(userId)}
                     onError={(e) => {
-                        e.target.src = virsualImage;
+                        e.target.src = FALLBACK_IMAGE;
                     }}
                 />
                 <div className="flex flex-col">
-                    <p className="text-base font-medium">{name}</p>
+                    <p className="text-base font-medium cursor-pointer" onClick={() => goToUserProfile(userId)}>{name}</p>
                     <p className="text-sm text-default-500">{createdAt}</p>
+                </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                {myId !== userId && <FollowButton userId={userId} initialFollowing={following.includes(userId)} />}
+                {myId === userId && <PostMenu postId={id} body={body} image={image} />}
                 </div>
             </CardHeader>
 
@@ -59,8 +147,22 @@ export default function AllPosts({ post, ispostdetailes = false }) {
                     <img
                         src={image}
                         alt={body || "post image"}
-                        className="w-full rounded-xl max-h-[380px] object-cover"
+                        className="w-full rounded-xl max-h-95 object-contain cursor-pointer"
+                        onClick={() => setLightbox(image)}
                     />
+                )}
+                {isShare && sharedPost && (
+                  <div className="border border-gray-300 rounded-xl p-3 bg-gray-50">
+                    <div className="flex items-center gap-2 mb-2 cursor-pointer" onClick={() => {
+                      const ownerId = sharedPost.user?.id || sharedPost.user?._id
+                      goToUserProfile(ownerId)
+                    }}>
+                      <img src={sharedPost.user?.photo} alt="" className="w-6 h-6 rounded-full" onError={(e) => e.target.src = FALLBACK_IMAGE} />
+                      <span className="text-sm font-medium hover:underline">{sharedPost.user?.name}</span>
+                    </div>
+                    {sharedPost.body && <p className="text-sm">{sharedPost.body}</p>}
+                    {sharedPost.image && <img src={sharedPost.image} alt="" className="mt-2 rounded-lg max-h-60 object-cover" />}
+                  </div>
                 )}
             </CardBody>
 
@@ -68,26 +170,42 @@ export default function AllPosts({ post, ispostdetailes = false }) {
 
             <CardFooter className="p-4">
                 <div className="flex justify-around w-full text-sm font-medium">
-                    <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
-                        👍 Like
+                    <div className="flex items-center gap-1 active:scale-95 transition">
+                        <div onClick={toggleLike} className="cursor-pointer flex items-center gap-1">
+                          {isLiked ? <AiFillLike size={18} className="text-blue-600" /> : <AiOutlineLike size={18} />}
+                        </div>
+                        <LikersList postId={id} count={post.likesCount ?? 0} />
                     </div>
                     <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
-                        <Link to={`/postdetailes/${id}`}>💬 Comments</Link>
+                        <Link to={`/postdetails/${id}`} className="flex items-center gap-1"><FaRegComment size={16} /> {commentsCount ?? 0}</Link>
                     </div>
-                    <div className="cursor-pointer flex items-center gap-1 active:scale-95 transition">
-                        🔗 Share
-                    </div>
+                    <ShareButton postId={id} />
+                    <BookmarkButton postId={id} />
                 </div>
             </CardFooter>
 
             <CreatComment post={post} />
 
-            {!ispostdetailes && topComment && <ShowComments comment={topComment} />}
+            {!isPostDetails && topComment && <ShowComments comment={topComment} postId={id} myId={myId} />}
 
-            {ispostdetailes &&
+            {isPostDetails &&
                 data?.data?.data?.comments?.map((currentcomment) => (
-                    <ShowComments key={currentcomment.id} comment={currentcomment} />
+                    <ShowComments key={currentcomment.id} comment={currentcomment} postId={id} myId={myId} />
                 ))}
         </Card>
+
+        {lightbox && (
+            <div
+                className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center cursor-pointer"
+                onClick={() => setLightbox(null)}
+            >
+                <img
+                    src={lightbox}
+                    alt="full screen"
+                    className="max-w-[95vw] max-h-[95vh] object-contain"
+                />
+            </div>
+        )}
+    </>
     );
 }

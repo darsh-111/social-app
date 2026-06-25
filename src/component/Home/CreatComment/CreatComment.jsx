@@ -1,17 +1,12 @@
-import React from 'react'
 import { MdPhotoSizeSelectActual } from "react-icons/md";
 import { IoSend } from "react-icons/io5";
 import axios from 'axios';
 import { useForm } from 'react-hook-form';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ImSpinner } from 'react-icons/im';
 export default function CreatComment({ post }) {
-    const { id, image, createdAt, user, body, topComment } = post;
+    const { id } = post;
 
-    const comment = {
-        content: "",
-        img: "",
-    };
     const form = useForm({
         defaultValues: {
             text: "",
@@ -19,46 +14,36 @@ export default function CreatComment({ post }) {
 
         }
     })
-    const formData = new FormData()
 
     const { register, handleSubmit, reset } = form
-    function creationcomment() {
-        return axios.post(
+
+    const queryClient = useQueryClient()
+
+    const { mutate, isPending } = useMutation({
+        mutationFn: ({ formData }) => axios.post(
             `https://route-posts.routemisr.com/posts/${id}/comments`,
             formData, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("usertoken")}`
             }
         }
-        )
-
-    }
-    const { mutate, isPending, isError, data } = useMutation({
-        mutationFn: creationcomment,
+        ),
         onSuccess: () => {
-            console.log("done");
             reset()
-
-        },
-        onError: (err) => {
-            console.log(err);
-
-
+            queryClient.invalidateQueries({ queryKey: ["postcomment", id] })
+            queryClient.invalidateQueries({ queryKey: ["getPosts"] })
         }
     })
     function eatcomment(val) {
-        //    console.log(val.text)
-        //  console.log(val.image[0])
         if (!val.text && !val.image[0]) return
+        const formData = new FormData()
         if (val.text) {
-
             formData.append("content", val.text)
         }
         if (val.image[0]) {
-
             formData.append("image", val.image[0])
         }
-        mutate();
+        mutate({ formData });
 
     }
     return (
@@ -72,7 +57,7 @@ export default function CreatComment({ post }) {
                         {...register("text")}
                         type="text"
                         placeholder="Write a comment..."
-                        className="flex-1 bg-white p-2 rounded-lg outline-none"
+                        className="flex-1 bg-white p-2 rounded-lg outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400"
                     />
 
 

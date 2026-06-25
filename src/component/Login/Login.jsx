@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import { useContext, useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,16 +12,16 @@ const schema =
 
     email: z
       .string()
-      .email({ message: "الإيميل غير صحيح" })
-      .min(1, { message: "الإيميل مطلوب" }),
+      .email({ message: "Invalid email" })
+      .min(1, { message: "Email is required" }),
     password: z
       .string()
-      .min(6, { message: "كلمة المرور لازم تكون 6 حروف على الأقل" })
+      .min(6, { message: "Password must be at least 6 characters" })
       .regex(
         /^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*?&]).+$/,
         {
           message:
-            "لازم تحتوي على حرف كبير أو صغير + رقم + رمز خاص",
+            "Must contain a letter, a number, and a special character",
         }
       ),
   });
@@ -40,9 +40,9 @@ export default function Login() {
     mode: "onChange"
   });
   const navigate = useNavigate();
-  const { Token, setToken } = useContext(TokenContext);
+  const { setToken } = useContext(TokenContext);
 
-  async function handelRegister(value) {
+  async function handelLogin(value) {
     try {
       setIsloading(true);
       setApierror(null);
@@ -65,7 +65,7 @@ export default function Login() {
     }
   }
 
-  const { register, handleSubmit } = form;
+  const { register, handleSubmit, formState: { errors } } = form;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -79,9 +79,7 @@ export default function Login() {
         <form
           className="max-w-md mx-auto shadow-xl p-8 rounded-3xl bg-white"
           onSubmit={
-            handleSubmit(handelRegister)}  >
-          {/* الاسم */}
-
+            handleSubmit(handelLogin)}  >
           {/* الإيميل */}
           <div className="relative z-0 w-full mb-6 group">
             <input
@@ -98,6 +96,7 @@ export default function Login() {
             >
               Enter your Email
             </label>
+            {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email.message}</p>}
           </div>
 
           {/* كلمة المرور */}
@@ -115,6 +114,7 @@ export default function Login() {
             >
               Enter your Password
             </label>
+            {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>}
           </div>
 
 
@@ -122,7 +122,7 @@ export default function Login() {
           <button
             disabled={Isloading}
             type="submit"
-            className="text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none disabled:bg-slate-800 disabled:cursor-not-allowed focus:ring-blue-300 font-medium rounded-3xl disabled:py-4 text-sm w-full px-4 py-4 text-center transition duration-200"
+            className="text-white bg-[#6f4ef2] hover:bg-[#5a3de0] focus:ring-4 focus:outline-none disabled:bg-slate-800 disabled:cursor-not-allowed focus:ring-[#6f4ef2]/30 font-medium rounded-3xl disabled:py-4 text-sm w-full px-4 py-4 text-center transition duration-200"
           >
             {Isloading ? <Spinner variant="spinner" />
               : "Login"}

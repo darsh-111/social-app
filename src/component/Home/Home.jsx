@@ -1,32 +1,27 @@
-import React, { useContext, useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import axios from 'axios'
 import AllPosts from '../GetAllPosts/AllPosts';
 import { InfinitySpin } from 'react-loader-spinner';
-import { Query, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Avatar } from '@heroui/react';
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-  useDisclosure,
-} from "@heroui/react";
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Avatar, Button, useDisclosure } from '@heroui/react';
+import DarkModal from '../DarkModal/DarkModal';
 import { ImCancelCircle } from "react-icons/im";
 import { IoMdPhotos } from "react-icons/io";
+import { useNavigate } from 'react-router-dom';
 
 
 export default function Home() {
   const [isloaded, setisloaded] = useState(false)
-  const inputimage = useRef(null)
-  const inputtext = useRef(null)
+  const [postText, setPostText] = useState('')
+  const [postFile, setPostFile] = useState(null)
+  const [postError, setPostError] = useState(null)
+  const imageUrlRef = useRef(null)
   const query = useQueryClient()
-  // const imageTest = "https://static.vecteezy.com/system/resources/thumbnails/050/393/628/small/cute-curious-gray-and-white-kitten-in-a-long-shot-photo.jpg";
+  const navigate = useNavigate()
   function GetPosts() {
     return axios.get("https://route-posts.routemisr.com/posts",
       {
-        params: { sort: "createdAt" },
+        params: { sort: "-createdAt" },
         headers: {
           Authorization: `Bearer ${localStorage.getItem("usertoken")}`
         }
@@ -34,33 +29,24 @@ export default function Home() {
     )
   }
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  function prepairdata() {
 
-    const formatdta = new FormData()
-    if (inputtext.current.value) {
-
-      formatdta.append("body", inputtext.current.value)
-    }
-    if (inputimage.current.files[0]) {
-
-      formatdta.append("image", inputimage.current.files[0])
-    }
-    return formatdta
-  }
-
-  function creatpost() {
-    return axios.post("https://route-posts.routemisr.com/posts", prepairdata(), {
+  const { isPending, mutate } = useMutation({
+    mutationFn: (formData) => axios.post("https://route-posts.routemisr.com/posts", formData, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("usertoken")}`
       }
-    })
-
-  }
-  const { isPending, mutate } = useMutation({
-    mutationFn: creatpost,
+    }),
     onSuccess: () => {
       query.invalidateQueries({ queryKey: ["getPosts"] })
       handelremoveimage()
+      setPostText('')
+    },
+    onError: (err) => {
+      setPostError(err.response?.data?.message || "Post failed")
+      if (err.response?.status === 401) {
+        localStorage.removeItem("usertoken")
+        navigate("/login")
+      }
     }
   })
 
@@ -69,21 +55,40 @@ export default function Home() {
     queryFn: GetPosts,
 
   })
+
+  const { data: profileData } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => axios.get("https://route-posts.routemisr.com/users/profile-data", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("usertoken")}` }
+    }),
+  })
+  const profile = profileData?.data?.data?.user
+
   function handelimage(e) {
-    // console.log(e.target.files[0]);
-    const path = URL.createObjectURL(e.target.files[0])
+    const file = e.target.files[0]
+    if (!file) return
+    setPostFile(file)
+    if (imageUrlRef.current) {
+      URL.revokeObjectURL(imageUrlRef.current)
+    }
+    const path = URL.createObjectURL(file)
+    imageUrlRef.current = path
     setisloaded(path)
   }
+
   function handelremoveimage() {
+    if (imageUrlRef.current) {
+      URL.revokeObjectURL(imageUrlRef.current)
+      imageUrlRef.current = null
+    }
     setisloaded(false)
-    inputimage.current.value = "";
-    //inputtext.current.value = "";
+    setPostFile(null)
   }
 
   if (isLoading) {
     return <div className='flex min-h-screen items-center justify-center'><InfinitySpin
       width="200"
-      color="#4fa94d"
+      color="#7c3aed"
     />
     </div>
   }
@@ -93,69 +98,52 @@ export default function Home() {
   }
   return (<>
 
-    <div className=" m-auto my-5 flex gap-5 w-full max-w-md mx-auto md:w-[40%] md:max-w-none">
-      <div>      <Avatar isBordered color="primary" src="https://i.pravatar.cc/150?u=a04258a2462d826712d" />
+    <div className="flex gap-5 w-full">
+      <div>      <Avatar isBordered color="primary" src={profile?.photo || "https://i.pravatar.cc/150?u=a04258a2462d826712d"} />
       </div>
-      <div className='bg-slate-300 item-center w-full block p-1 rounded-2xl'>
-        <input type="text" readOnly placeholder='what do your think....!' onClick={onOpen} className='items-center m-2 w-full ms-0 rounded-4xl text-danger' />
+      <div className='bg-slate-300 flex items-center w-full p-1 rounded-2xl'>
+        <input type="text" readOnly placeholder='what do your think....!' onClick={onOpen} className='m-2 w-full ms-0 rounded-2xl p-3 border-0 focus:ring-2 focus:ring-yellow-400 placeholder-black' />
       </div>
-      <div hidden>
-        <Button color="secondary" >
-          Open Modal
-        </Button>
-        <Modal
-          backdrop="opaque"
-          classNames={{
-            body: "py-6",
-            backdrop: "bg-[#292f46]/50 backdrop-opacity-40",
-            base: "border-[#292f46] bg-[#19172c] dark:bg-[#19172c] text-[#a8b0d3]",
-            header: "border-b-[1px] border-[#292f46]",
-            footer: "border-t-[1px] border-[#292f46]",
-            closeButton: "hover:bg-white/5 active:bg-white/10",
-          }}
-          isOpen={isOpen}
-          radius="lg"
-          onOpenChange={onOpenChange}
-        >
-          <ModalContent>
-            {(onClose) => (
-              <>
-                <ModalHeader className="flex flex-col gap-1">Modal Title</ModalHeader>
-                <ModalBody>
-                  <div className='block gap-5'> <div className='bg-slate-300 item-center w-full block p-1 rounded-2xl'>
-                    <input type="text" placeholder='what do your think....!' ref={inputtext} onClick={onOpen} className='items-center m-2 w-full ms-0 rounded-4xl text-danger p-3 border-0' />
+      <DarkModal isOpen={isOpen} onOpenChange={onOpenChange}>
+          {(onClose) => (
+            <>
+              <div className="border-b-[1px] border-[#292f46] px-6 py-4 text-lg font-semibold">Create Post</div>
+              <div className="py-6 px-6">
+                <div className='block gap-5'> <div className='bg-slate-300 flex items-center w-full p-1 rounded-2xl'>
+                  <input type="text" placeholder='what do your think....!' value={postText} onChange={(e) => { setPostText(e.target.value); setPostError(null) }} className='m-2 w-full ms-0 rounded-2xl p-3 border-0 focus:ring-2 focus:ring-yellow-400 placeholder-gray-700' />
+                </div>
+                  {isloaded && <div className="py-5 relative w-fit">
+                    <img src={isloaded} alt="tesst" />
+                    <div className='absolute top-6 right-1 cursor-pointer text-black text-4xl'>
+                      <ImCancelCircle onClick={() => handelremoveimage()} /> </div>
+                  </div>}
+                </div>
+                  {postError && <p className="text-red-500 text-sm text-center mt-2">{postError}</p>}
+              </div>
+              <div className="border-t-[1px] border-[#292f46] px-6 py-4 flex items-center gap-2">
+                <label className='cursor-pointer'>
+                  <input type="file" hidden onChange={(e) => handelimage(e)} />
+                  <IoMdPhotos size={30} />
+                </label>
+                <div className="flex-1" />
+                <Button color="foreground" variant="light" onPress={onClose} className="hover:bg-danger cursor-pointer">
+                  Close
+                </Button>
+                <button disabled={isPending} className="bg-[#6f4ef2] shadow-lg shadow-indigo-500/20 cursor-pointer px-5 rounded-2xl py-3 disabled:opacity-50 disabled:cursor-not-allowed" onClick={function () {
+                  const fd = new FormData()
+                  if (postText) fd.append("body", postText)
+                  if (postFile) fd.append("image", postFile)
+                  mutate(fd)
+                  onClose()
+                }}>
+                  {isPending ? "Posting..." : "Post"} </button>
+              </div>
+            </>
+          )}
+        </DarkModal>
 
-                  </div>
-                    {isloaded && <div className="py-5 relative w-fit">
-                      <img src={isloaded} alt="tesst" />
-                      <div className='absolute top-6 right-1 cursor-pointer text-black text-4xl'>
-                        <ImCancelCircle onClick={() => handelremoveimage()} /> </div>
-                    </div>}
-                  </div>               </ModalBody>
-                <ModalFooter className='flex items-center'>
-                  <label color="foreground" variant="light" className=' cursor-pointer ' >
-                    <input type="file" ref={inputimage} hidden className=' size-7 cursor-pointer ' onChange={(e) => {
-                      handelimage(e)
-                    }} />
-                    <IoMdPhotos size={30} />
-                  </label>
-                  <Button color="foreground" variant="light" onPress={onClose} className="hover:bg-danger cursor-pointer">
-                    Close
-                  </Button>
-                  <button className="bg-[#6f4ef2] shadow-lg shadow-indigo-500/20 cursor-pointer px-5 rounded-2xl py-3" onClick={function () {
-                    onClose()
-                    mutate()
-                  }}>
-                    post                  </button>
-                </ModalFooter>
-              </>
-            )}
-          </ModalContent>
-        </Modal>
-
-      </div>
     </div>
-    {data?.data.data.posts?.map((post) => <div key={post.id} className='mb-7.5  mx-auto'>
+    {data?.data.data.posts?.map((post) => <div key={post.id} className='mb-7.5'>
       <AllPosts post={post} />
     </div>)}
   </>

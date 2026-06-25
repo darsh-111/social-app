@@ -1,4 +1,3 @@
-import React from 'react'
 import { Outlet } from 'react-router-dom'
 
 import Footer from '../Footer/Footer';
@@ -10,7 +9,7 @@ export default function Layout() {
 
         <>
             <MyNavbar />
-            <div className="container min-h-screen  mx-auto w-[80%] ">
+            <div className="w-full px-4 lg:px-0 lg:max-w-3xl xl:max-w-5xl mx-auto min-h-screen">
                 <Outlet />
 
             </div>
