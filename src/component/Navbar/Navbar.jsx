@@ -63,7 +63,7 @@ export default function MyNavbar() {
     setToken(null)
   }
   return (
-    <Navbar className="w-full px-0">
+    <Navbar className="w-full px-0" isMenuOpen={isMenuOpen} onMenuOpenChange={setIsMenuOpen}>
       <NavbarMenuToggle
         aria-label={isMenuOpen ? "Close menu" : "Open menu"}
         className="sm:hidden"
@@ -72,9 +72,7 @@ export default function MyNavbar() {
         {Token ? logedmenuItems.map((item, index) => (
           <NavbarMenuItem key={`${item}-${index}`}>
             <Link
-              onClick={item === "Log Out" && function () {
-                logout()
-              }}
+              onClick={() => { setIsMenuOpen(false); if (item === "Log Out") logout() }}
               className="w-full"
               color={
                 index === 2 ? "primary" : index === logedmenuItems.length - 1 ? "danger" : "foreground"
@@ -89,7 +87,7 @@ export default function MyNavbar() {
           unlogedmenuItems.map((item, index) => (
             <NavbarMenuItem key={`${item}-${index}`}>
               <Link
-
+                onClick={() => setIsMenuOpen(false)}
                 className="w-full"
                 color={
                   index === 2 ? "primary" : index === unlogedmenuItems.length - 1 ? "danger" : "foreground"
